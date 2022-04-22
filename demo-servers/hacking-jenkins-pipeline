@@ -1,0 +1,31 @@
+pipeline {
+    agent {
+        docker { 
+            image 'eclipse-temurin:18_36-jdk'
+            args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+    stages {
+        stage('Test') {
+            steps {
+                sh 'java -version'
+                sh 'whoami'
+                sh 'curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-20.10.9.tgz | tar zxvf - --strip 1 -C /usr/bin docker/docker'
+                sh 'rm container-script.sh || true'
+                sh """
+cat << EOT >> container-script.sh
+#!/bin/bash
+cd host/home/vagrant
+echo "Really Hello from the pipeline" >> location.txt
+EOT
+                """
+                sh 'echo "Created script"'
+                sh 'cat container-script.sh'
+                sh 'chmod +x container-script.sh'
+                sh 'mkdir -p scripts'
+                sh 'mv container-script.sh scripts/container-script.sh'
+                sh 'docker run -v "$(pwd)"/scripts:/scripts -v /:/host/ ubuntu:18.04 /bin/bash -c "sh scripts/container-script.sh"'
+            }
+        }
+    }
+}
